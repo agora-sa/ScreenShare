@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+ def properties = new Properties()
+ properties.load(rootProject.file("gradle.properties").newDataInputStream())
+
+android {
+    compileSdk 32
+
+    defaultConfig {
+        applicationId "io.agora.agorascreenshare"
+        minSdk 21
+        targetSdk 32
+        versionCode 1
+        versionName "1.0"
+
+        buildConfigField "String", "AGORA_APP_ID", "${properties.getProperty("AGORA_APP_ID")}"
+        buildConfigField "String", "AGORA_APP_CER", "${properties.getProperty("AGORA_APP_CER")}"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+
+    implementation 'com.tencent:mmkv-static:1.2.10'
+    implementation 'io.agora.rtc:full-screen-sharing:4.2.2.131.JQ.1'
+    implementation 'io.agora.rtc:agora-special-full:4.2.2.131.JQ.1'
+
+    implementation "com.squareup.okhttp3:okhttp:4.10.0"
+    implementation "com.squareup.okhttp3:logging-interceptor:4.10.0"
+
+    implementation 'androidx.appcompat:appcompat:1.5.0'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}

@@ -1,0 +1,5 @@
+<resources>
+
+    <string name="app_name">screenShare</string>
+    <string name="channel_support_char" translatable="false">qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890 !#$%()+-:;&lt;=.>?@[]^_{}|~,&amp;</string>
+</resources>
