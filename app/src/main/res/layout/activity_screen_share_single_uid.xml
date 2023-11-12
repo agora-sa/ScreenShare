@@ -60,7 +60,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#ff000000"
-            android:text="Screen Audio Volume" />
+            android:text="Screen Screen Volume" />
 
         <SeekBar
             android:id="@+id/screen_audio_volume"
