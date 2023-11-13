@@ -42,4 +42,12 @@
         <item>3</item>
         <item>4</item>
     </string-array>
+
+    <string-array name="logSize">
+        <item>1024</item>
+        <item>2048</item>
+        <item>5120</item>
+        <item>10240</item>
+        <item>20480</item>
+    </string-array>
 </resources>

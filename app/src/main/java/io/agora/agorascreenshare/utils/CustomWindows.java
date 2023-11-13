@@ -22,6 +22,7 @@ public class CustomWindows {
         public static final String KEY_DIMENSIONS = "dimensions";
         public static final String KEY_FPS = "fps";
         public static final String KEY_VOLUME_MUL = "volumeMul";
+        public static final String KEY_LOG_SIZE = "logSize";
     }
 
     public void popWindows(MMKV mmkv, Context context) {
@@ -35,6 +36,7 @@ public class CustomWindows {
         String dimensions = mmkv.decodeString(PARAMS_KEY.KEY_DIMENSIONS, "VD_640x480"); // 分辨率
         String fps = mmkv.decodeString(PARAMS_KEY.KEY_FPS, "15"); // 帧率
         String volumeMul = mmkv.decodeString(PARAMS_KEY.KEY_VOLUME_MUL, "1"); // 帧率
+        String logSize = mmkv.decodeString(PARAMS_KEY.KEY_LOG_SIZE, "1024"); // sdk log size
 
         Log.d("JD-DEMO", "dimensions=" + dimensions + " , fps=" + fps);
 
@@ -45,6 +47,7 @@ public class CustomWindows {
         AppCompatSpinner fpsSpinner = customView.findViewById(R.id.rate_frame_spinner);
         AppCompatSpinner dimensionsSpinner = customView.findViewById(R.id.dimensions_spinner);
         AppCompatSpinner volumeSpinner = customView.findViewById(R.id.volume_mul__spinner);
+        AppCompatSpinner logSizeSpinner = customView.findViewById(R.id.log_size_spinner);
 
         // ---------------------- 设置默认值 ----------------------
         addStateSwitch.setChecked(addState);
@@ -79,7 +82,18 @@ public class CustomWindows {
                 i++;
             }
         }
-        volumeSpinner.setSelection(i);
+        logSizeSpinner.setSelection(i);
+        String[] mLogSizeItems = context.getResources().getStringArray(R.array.logSize);
+        i = 0;
+        if (mLogSizeItems != null) {
+            for (String item : mLogSizeItems) {
+                if (item.equals(logSize)) {
+                    break;
+                }
+                i++;
+            }
+        }
+        logSizeSpinner.setSelection(i);
 
         Log.d("JD-DEMO", "create dialog...1");
 
@@ -99,10 +113,12 @@ public class CustomWindows {
             mmkv.encode(PARAMS_KEY.KEY_DIMENSIONS, context.getResources().getStringArray(R.array.dimensions)[dimensionsSpinner.getSelectedItemPosition()]);
             mmkv.encode(PARAMS_KEY.KEY_FPS, context.getResources().getStringArray(R.array.fps)[fpsSpinner.getSelectedItemPosition()]);
             mmkv.encode(PARAMS_KEY.KEY_VOLUME_MUL, context.getResources().getStringArray(R.array.volumeMultiple)[volumeSpinner.getSelectedItemPosition()]);
+            mmkv.encode(PARAMS_KEY.KEY_LOG_SIZE, context.getResources().getStringArray(R.array.logSize)[logSizeSpinner.getSelectedItemPosition()]);
 
             Log.d("JD-DEMO", "after click::: add state " + mmkv.decodeBool(PARAMS_KEY.KEY_ADD_STATE) + " " +
                     ", dimensions=" + mmkv.decodeString(PARAMS_KEY.KEY_DIMENSIONS)
-                    + " , fps=" + mmkv.decodeString(PARAMS_KEY.KEY_FPS) + " , volume=" + mmkv.decodeString(PARAMS_KEY.KEY_VOLUME_MUL));
+                    + " , fps=" + mmkv.decodeString(PARAMS_KEY.KEY_FPS) + " , volume=" + mmkv.decodeString(PARAMS_KEY.KEY_VOLUME_MUL)
+                    + " , logSize=" + mmkv.decodeString(PARAMS_KEY.KEY_LOG_SIZE));
         });
         builder.setNegativeButton("取消", null);
         builder.setCancelable(false);

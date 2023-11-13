@@ -91,12 +91,17 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
     private int fps;
     // 音量调节的增益倍数，默认不增益
     private int volumeMultiple = 1;
+    // sdk log的大小，单位KB
+    private int logSize = 1024;
     // 默认是720*1080
     private int[] dimens = {720, 1080};
 
     private final ScreenCaptureParameters screenCaptureParameters = new ScreenCaptureParameters();
     private final ChannelMediaOptions options = new ChannelMediaOptions();
     private Runnable dumpRunnable;
+
+    // 是否已经开始了视频dump的功能，默认没有开始
+    private boolean isDumped;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -110,6 +115,11 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
 
     @Override
     protected void next() {
+        if (!isDumped) {
+            startDump();
+            isDumped = true;
+        }
+
         engine.setParameters("{\"che.video.mobile_1080p\":true}");
         engine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
 
@@ -138,24 +148,6 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
 
         if (screenPreview.isChecked()) {
             startScreenSharePreview();
-        }
-
-        Log.d(TAG, "SSSSS JD-DEMO dumpVideo : " + dumpVideo);
-        // 是否开启视频dump功能
-        if (dumpVideo) {
-            // 创建一个Runnable对象，定义每分钟执行的任务
-            dumpRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    int closeRet = engine.setParameters("{\"engine.video.enable_video_dump\":{\"mode\":8,\"enable\":false}}");
-                    int openRet = engine.setParameters("{\"engine.video.enable_video_dump\":{\"mode\":8,\"enable\":true}}");
-                    Log.d(TAG, "dump result is : " + closeRet + " , " + openRet);
-                    // 再次使用Handler的postDelayed方法将这个Runnable对象添加到消息队列中，等待下一分钟执行
-                    handler.postDelayed(this, 59000); // 59S
-                }
-            };
-            // 使用Handler的postDelayed方法将Runnable对象添加到消息队列中，等待1分钟后执行
-            handler.postDelayed(dumpRunnable, 1000); // 1S
         }
 
         String channelName = et_channel.getText().toString();
@@ -273,6 +265,12 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
             config.mContext = this.getApplicationContext();
             config.mAppId = BuildConfig.AGORA_APP_ID;
             config.mChannelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
+
+//            RtcEngineConfig.LogConfig logConfig = new RtcEngineConfig.LogConfig();
+//            logConfig.fileSizeInKB = logSize;
+//            config.mLogConfig = logConfig;
+//            Log.d(TAG, "logSize is : " + logSize);
+
             config.mEventHandler = iRtcEngineEventHandler;
             config.mAudioScenario = Constants.AudioScenario.getValue(Constants.AudioScenario.DEFAULT);
             config.mAreaCode = ((ScreenShareApp) getApplication()).getGlobalSettings().getAreaCode();
@@ -296,6 +294,7 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         fps = Integer.parseInt(Objects.requireNonNull(mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_FPS, "15")));
         volumeMultiple = Integer.parseInt(Objects.requireNonNull(mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_VOLUME_MUL, "1")));
         dimensions = mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_DIMENSIONS, "VD_1280x720");
+        logSize = Integer.parseInt(Objects.requireNonNull(mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_LOG_SIZE, "1024")));
         dimens = ViewUtils.computeWidthAndHeight(dimensions);
 
         Log.d("SSSSS DEMO",
@@ -525,5 +524,32 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
     private void visibleAll() {
         fl_camera.setVisibility(View.VISIBLE);
         fl_screen.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * 开始循环，一分钟dump一次
+     */
+    private void startDump() {
+        Log.d(TAG, "SSSSS JD-DEMO dumpVideo : " + dumpVideo);
+        // 是否开启视频dump功能
+        if (dumpVideo) {
+            // 创建一个Runnable对象，定义每分钟执行的任务
+            dumpRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    // 以下的调用，如果没有远端加入频道会返回-2
+                    int openRet = engine.setParameters("{\"engine.video.enable_video_dump\":{\"mode\":8,\"enable\":true}}");
+                    Log.d(TAG, "dump result is : " + openRet);
+                    // 再次使用Handler的postDelayed方法将这个Runnable对象添加到消息队列中，等待下一分钟执行
+                    handler.postDelayed(this, 58000); // 58S
+                }
+            };
+            // 使用Handler的postDelayed方法将Runnable对象添加到消息队列中，等待1分钟后执行
+            handler.postDelayed(dumpRunnable, 0); // 立即开始
+
+            // 设置sdk 日志模式为debug模式并且size设置到很大，这个也是dump开关打开后才设置
+            engine.setParameters("{\"rtc.log_filter\":65535}");
+            engine.setParameters("{\"rtc.log_size \":1000000000}");
+        }
     }
 }

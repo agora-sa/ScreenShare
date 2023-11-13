@@ -2,6 +2,7 @@ package io.agora.agorascreenshare.utils;
 
 import android.app.Activity;
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -20,17 +21,14 @@ public class ViewUtils {
      */
     public static int[] computeWidthAndHeight(String dimensions) {
         int[] dimens = new int[2];
-        // 匹配四个数字，然后是小写字母 x，然后是三个数字
-        String pattern = "(\\d{4})x(\\d{3})";
-        Pattern r = Pattern.compile(pattern);
-        Matcher m = r.matcher(dimensions);
-
-        if (m.find()) {
-            // 匹配的第一个括号中的内容，即宽度
-            dimens[0] = Integer.parseInt(m.group(1));
-            // 匹配的第二个括号中的内容，即高度=
-            dimens[1] = Integer.parseInt(m.group(2));
+        if (TextUtils.isEmpty(dimensions)) {
+            dimens[0] = 1280;
+            dimens[1] = 720;
+            return dimens;
         }
+        int indexOfX = dimensions.indexOf("x");
+        dimens[0] = Integer.parseInt(dimensions.substring(3, indexOfX));
+        dimens[1] = Integer.parseInt(dimensions.substring(indexOfX + 1));
         return dimens;
     }
 

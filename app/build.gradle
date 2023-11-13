@@ -1,9 +1,11 @@
 plugins {
     id 'com.android.application'
 }
+def localSdkPath = "${rootProject.projectDir.absolutePath}/app/agora-libs"
+def localSoPath = "${rootProject.projectDir.absolutePath}/app/src/main/agora-jniLibs"
 
- def properties = new Properties()
- properties.load(rootProject.file("gradle.properties").newDataInputStream())
+def properties = new Properties()
+properties.load(rootProject.file("gradle.properties").newDataInputStream())
 
 android {
     compileSdk 32
@@ -27,6 +29,19 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/agora-jniLibs']
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            keepDebugSymbols += ['**/*.so']
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -34,11 +49,18 @@ android {
 }
 
 dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+
+    if (new File("${localSdkPath}").exists() && new File("${localSoPath}").exists()) {
+        implementation fileTree(dir: "${localSdkPath}", include: ['*.jar', '*.aar'])
+        System.out.println('load local sdk!')
+    } else {
+        implementation 'io.agora.rtc:full-screen-sharing:4.2.2.131.JQ.1'
+        implementation 'io.agora.rtc:agora-special-full:4.2.2.131.JQ.1'
+        System.out.println('load server sdk!')
+    }
 
     implementation 'com.tencent:mmkv-static:1.2.10'
-    implementation 'io.agora.rtc:full-screen-sharing:4.2.2.131.JQ.1'
-    implementation 'io.agora.rtc:agora-special-full:4.2.2.131.JQ.1'
-
     implementation "com.squareup.okhttp3:okhttp:4.10.0"
     implementation "com.squareup.okhttp3:logging-interceptor:4.10.0"
 
