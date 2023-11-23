@@ -5,6 +5,12 @@
 # Demo快速跑通指南
     在 gradle.properties 中配置您的appid 和 appCer等信息即可
 
+# 集成方式
+    如果需要手动集成，只需将jar和aar放在agora-libs下面
+    将so文件放在 agora-jniLibs下面，项目会自动检查这两个文件夹下是否存在库文件
+    如果存在，那么会自动采用手动集成的方式进行集成，如果不存在会通过maven库加载
+    （这里并不保证检查库文件的正确与否）
+
 # Demo主要功能介绍
     # BASIC：
         1、加入声网RTC频道

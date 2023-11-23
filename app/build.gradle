@@ -32,7 +32,7 @@ android {
 
     sourceSets {
         main {
-            jniLibs.srcDirs = ['src/main/agora-jniLibs']
+            jniLibs.srcDirs = ['src/main/jniLibs','src/main/agora-jniLibs']
         }
     }
 
@@ -51,7 +51,10 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
 
-    if (new File("${localSdkPath}").exists() && new File("${localSoPath}").exists()) {
+    boolean isExistSdk = checkDirectoryAndPrintMessage("${localSdkPath}")
+    boolean isExistSo = checkDirectoryAndPrintMessage("${localSoPath}")
+
+    if (isExistSdk && isExistSo) {
         implementation fileTree(dir: "${localSdkPath}", include: ['*.jar', '*.aar'])
         System.out.println('load local sdk!')
     } else {
@@ -70,4 +73,18 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
+
+/**
+ * 检查文件夹是否存在及文件夹下是否存在文件
+ * @param directoryPath 库文件夹
+ * @return 是否存在文件夹切文件夹下是否存在文件
+ */
+static def checkDirectoryAndPrintMessage(directoryPath) {
+    File directory = new File(directoryPath)
+    if (directory.exists()) {
+        return directory.isDirectory() && directory.listFiles().length > 0
+    } else {
+        return false;
+    }
 }

@@ -7,10 +7,36 @@
     tools:context=".activity.MainActivity">
 
     <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/setting"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/btn_bg"
+        android:layout_marginTop="10dp"
+        android:text="设置"
+        android:textColor="@color/white"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/version"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:text="sdk version : 4.2.3.1"
+        android:textColor="#ffff0000"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        app:layout_constraintTop_toBottomOf="@+id/setting"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/screen_share_single_uid"
         android:layout_width="260dp"
         android:layout_height="58dp"
         android:background="@drawable/btn_bg"
+        android:textColor="@color/white"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -22,6 +48,7 @@
         android:layout_height="58dp"
         android:background="@drawable/btn_bg"
         android:layout_marginTop="10dp"
+        android:textColor="@color/white"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/screen_share_single_uid" />

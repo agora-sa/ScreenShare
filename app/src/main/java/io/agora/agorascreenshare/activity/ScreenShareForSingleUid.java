@@ -22,7 +22,6 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.AppCompatTextView;
 import androidx.appcompat.widget.SwitchCompat;
 
 import com.tencent.mmkv.MMKV;
@@ -52,7 +51,6 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
 
     private static final String TAG = "ScreenShareForSingleUid";
 
-
     private VideoReportLayout fl_camera;
     private VideoReportLayout fl_screen;
     private Button join;
@@ -64,18 +62,11 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
     private SeekBar screenAudioVolume;
     private SeekBar captureAudioVolume;
     private Spinner screenScenarioType;
-    private AppCompatTextView mVersion;
-
-    private CustomWindows mCustomWindow;
 
     private Intent fgServiceIntent;
     private boolean joined;
     private int remoteUid;
 
-    // 连续点击8次，弹出弹框，设置私有参数
-    private static final int CLICK_COUNT = 8;
-    // 连续点击版本号的次数
-    private int clickCount = 0;
     private boolean isFullOfCamera;
     private boolean isFullOfScreen;
 
@@ -205,18 +196,6 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         captureAudioVolume = findViewById(R.id.mic_audio_volume);
         screenScenarioType = findViewById(R.id.spinner_screen_scenario_type);
 
-        mCustomWindow = new CustomWindows();
-
-        mVersion = findViewById(R.id.version);
-        mVersion.setOnClickListener(v -> {
-            clickCount++;
-            if (clickCount == CLICK_COUNT) {
-                Log.d(TAG, "click pop window!");
-                mCustomWindow.popWindows(mmkv, ScreenShareForSingleUid.this);
-                clickCount = 0;
-            }
-        });
-
         screenScenarioType.setOnItemSelectedListener(this);
         screenPreview.setOnCheckedChangeListener(this);
         screenAudio.setOnCheckedChangeListener(this);
@@ -257,12 +236,9 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
             fgServiceIntent = new Intent(ScreenShareForSingleUid.this, MediaProjectFgService.class);
         }
 
-        if (null != mVersion) {
-            mVersion.setText("sdk version : " + RtcEngine.getSdkVersion());
-        }
         try {
             RtcEngineConfig config = new RtcEngineConfig();
-            config.mContext = this.getApplicationContext();
+            config.mContext = ScreenShareForSingleUid.this;
             config.mAppId = BuildConfig.AGORA_APP_ID;
             config.mChannelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
 
@@ -463,6 +439,12 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         }
 
         @Override
+        public void onVideoSizeChanged(Constants.VideoSourceType source, int uid, int width, int height, int rotation) {
+            super.onVideoSizeChanged(source, uid, width, height, rotation);
+            Log.i(TAG, "onVideoSizeChanged。。。");
+        }
+
+        @Override
         public void onRemoteVideoStateChanged(int uid, int state, int reason, int elapsed) {
             super.onRemoteVideoStateChanged(uid, state, reason, elapsed);
             Log.i(TAG, "onRemoteVideoStateChanged:uid->" + uid + ", state->" + state);
@@ -528,6 +510,8 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
 
     /**
      * 开始循环，一分钟dump一次
+     * 查看dump的视频是否有I帧的命令
+     * ffprobe -select_streams v:0 -show_frames -show_entries frame=pict_type xxx.h264
      */
     private void startDump() {
         Log.d(TAG, "SSSSS JD-DEMO dumpVideo : " + dumpVideo);
