@@ -24,12 +24,8 @@ import android.widget.Spinner;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 
-import com.tencent.mmkv.MMKV;
-
-import java.util.Objects;
-
 import io.agora.agorascreenshare.BuildConfig;
-import io.agora.agorascreenshare.utils.CustomWindows;
+import io.agora.agorascreenshare.utils.CacheLogic;
 import io.agora.agorascreenshare.utils.MediaProjectFgService;
 import io.agora.agorascreenshare.R;
 import io.agora.agorascreenshare.ScreenShareApp;
@@ -71,21 +67,7 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
     private boolean isFullOfScreen;
 
     private RtcEngineEx engine;
-    private MMKV mmkv;
-    // 打开状态信息开关
-    private boolean addState;
-    // 打开dump video开关
-    private boolean dumpVideo;
-    // 分辨率
-    private String dimensions;
-    // 帧率
-    private int fps;
-    // 音量调节的增益倍数，默认不增益
-    private int volumeMultiple = 1;
-    // sdk log的大小，单位KB
-    private int logSize = 1024;
-    // 默认是720*1080
-    private int[] dimens = {720, 1080};
+    private CacheLogic mCacheLogic;
 
     private final ScreenCaptureParameters screenCaptureParameters = new ScreenCaptureParameters();
     private final ChannelMediaOptions options = new ChannelMediaOptions();
@@ -130,9 +112,9 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         DisplayMetrics metrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
         screenCaptureParameters.captureVideo = true;
-        screenCaptureParameters.videoCaptureParameters.width = dimens[0];
-        screenCaptureParameters.videoCaptureParameters.height = (int) (dimens[0] * 1.0f / metrics.widthPixels * metrics.heightPixels);
-        screenCaptureParameters.videoCaptureParameters.framerate = fps;
+        screenCaptureParameters.videoCaptureParameters.width = mCacheLogic.getDimens()[0];
+        screenCaptureParameters.videoCaptureParameters.height = (int) (mCacheLogic.getDimens()[0] * 1.0f / metrics.widthPixels * metrics.heightPixels);
+        screenCaptureParameters.videoCaptureParameters.framerate = mCacheLogic.getFps();
         screenCaptureParameters.captureAudio = true;
         screenCaptureParameters.audioCaptureParameters.captureSignalVolume = screenAudioVolume.getProgress();
         engine.startScreenCapture(screenCaptureParameters);
@@ -262,20 +244,8 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
      * 初始化之前在mmkv里面设置的值
      */
     private void initMMKVValue() {
-        MMKV.initialize(this);
-        mmkv = MMKV.defaultMMKV();
-
-        addState = mmkv.decodeBool(CustomWindows.PARAMS_KEY.KEY_ADD_STATE, false);
-        dumpVideo = mmkv.decodeBool(CustomWindows.PARAMS_KEY.KEY_DUMP_VIDEO, false);
-        fps = Integer.parseInt(Objects.requireNonNull(mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_FPS, "15")));
-        volumeMultiple = Integer.parseInt(Objects.requireNonNull(mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_VOLUME_MUL, "1")));
-        dimensions = mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_DIMENSIONS, "VD_1280x720");
-        logSize = Integer.parseInt(Objects.requireNonNull(mmkv.decodeString(CustomWindows.PARAMS_KEY.KEY_LOG_SIZE, "1024")));
-        dimens = ViewUtils.computeWidthAndHeight(dimensions);
-
-        Log.d("SSSSS DEMO",
-                "SSSSS JD-DEMO JoinChannelVideo:::isAccessPoint=" + "dimensions=" + dimensions
-                        + " , fps=" + fps + " , addState=" + addState + " , dumpVideo=" + dumpVideo);
+        mCacheLogic = new CacheLogic();
+        mCacheLogic.loadCache(this);
     }
 
     private void leaveChannel() {
@@ -345,8 +315,8 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean b) {
-        Log.d(TAG, "progress value is : " + progress + " , " + volumeMultiple);
-        progress *= volumeMultiple;
+        Log.d(TAG, "progress value is : " + progress + " , " + mCacheLogic.getVolumeMultiple());
+        progress *= mCacheLogic.getVolumeMultiple();
         if (seekBar == screenAudioVolume) {
             if (!joined) {
                 return;
@@ -410,14 +380,14 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         @Override
         public void onLocalAudioStats(LocalAudioStats stats) {
             super.onLocalAudioStats(stats);
-            if (addState)
+            if (mCacheLogic.isAddState())
                 fl_camera.setLocalAudioStats(stats);
         }
 
         @Override
         public void onRemoteAudioStats(RemoteAudioStats stats) {
             super.onRemoteAudioStats(stats);
-            if (addState) {
+            if (mCacheLogic.isAddState()) {
                 fl_screen.setRemoteAudioStats(stats);
             }
 
@@ -426,14 +396,14 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         @Override
         public void onLocalVideoStats(Constants.VideoSourceType source, LocalVideoStats stats) {
             super.onLocalVideoStats(source, stats);
-            if (addState)
+            if (mCacheLogic.isAddState())
                 fl_camera.setLocalVideoStats(stats);
         }
 
         @Override
         public void onRemoteVideoStats(RemoteVideoStats stats) {
             super.onRemoteVideoStats(stats);
-            if (addState) {
+            if (mCacheLogic.isAddState()) {
                 fl_screen.setRemoteVideoStats(stats);
             }
         }
@@ -514,9 +484,9 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
      * ffprobe -select_streams v:0 -show_frames -show_entries frame=pict_type xxx.h264
      */
     private void startDump() {
-        Log.d(TAG, "SSSSS JD-DEMO dumpVideo : " + dumpVideo);
+        Log.d(TAG, "SSSSS JD-DEMO dumpVideo : " + mCacheLogic.isDumpVideo());
         // 是否开启视频dump功能
-        if (dumpVideo) {
+        if (mCacheLogic.isDumpVideo()) {
             // 创建一个Runnable对象，定义每分钟执行的任务
             dumpRunnable = new Runnable() {
                 @Override

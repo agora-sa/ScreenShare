@@ -1,6 +1,7 @@
 package io.agora.agorascreenshare.activity;
 
 import android.Manifest;
+import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public abstract class BaseActivity extends AppCompatActivity {
 
     protected Handler handler;
+    protected Context mContext;
 
     // 是否同意了权限
     protected boolean isRequested = false;

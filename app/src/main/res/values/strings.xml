@@ -1,5 +1,11 @@
 <resources>
 
-    <string name="app_name">screenShare</string>
+    <string name="app_name">Screen-Share</string>
     <string name="channel_support_char" translatable="false">qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890 !#$%()+-:;&lt;=.>?@[]^_{}|~,&amp;</string>
+
+    <string name="camera">Publish Camera</string>
+    <string name="screen_share">Screen Share</string>
+    <string name="screen_share_preview">Screen Preview</string>
+    <string name="screen_share_audio">Screen Audio</string>
+    <string name="screen_share_video">Screen Video</string>
 </resources>
