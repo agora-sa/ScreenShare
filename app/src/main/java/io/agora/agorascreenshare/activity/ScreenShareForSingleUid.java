@@ -25,10 +25,12 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 
 import io.agora.agorascreenshare.BuildConfig;
+import io.agora.agorascreenshare.common.CommonEventHandler;
 import io.agora.agorascreenshare.utils.CacheLogic;
 import io.agora.agorascreenshare.utils.MediaProjectFgService;
 import io.agora.agorascreenshare.R;
 import io.agora.agorascreenshare.ScreenShareApp;
+import io.agora.agorascreenshare.utils.RtcEngineManager;
 import io.agora.agorascreenshare.utils.TokenUtils;
 import io.agora.agorascreenshare.utils.VideoReportLayout;
 import io.agora.agorascreenshare.utils.ViewUtils;
@@ -43,7 +45,7 @@ import io.agora.rtc2.video.VideoCanvas;
 import io.agora.rtc2.video.VideoEncoderConfiguration;
 
 public class ScreenShareForSingleUid extends BaseActivity implements View.OnClickListener,
-        CompoundButton.OnCheckedChangeListener, SeekBar.OnSeekBarChangeListener, AdapterView.OnItemSelectedListener {
+        CompoundButton.OnCheckedChangeListener, SeekBar.OnSeekBarChangeListener, AdapterView.OnItemSelectedListener, CommonEventHandler {
 
     private static final String TAG = "ScreenShareForSingleUid";
 
@@ -156,7 +158,7 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         }
         engine = null;
         super.onDestroy();
-        handler.post(RtcEngine::destroy);
+        // handler.post(RtcEngine::destroy);
 
         // 在活动销毁时，移除Runnable对象，避免内存泄漏
         handler.removeCallbacks(dumpRunnable);
@@ -210,34 +212,18 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
                 isFullOfScreen = false;
             }
         });
-
     }
 
     private void initEngine() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             fgServiceIntent = new Intent(ScreenShareForSingleUid.this, MediaProjectFgService.class);
         }
-
-        try {
-            RtcEngineConfig config = new RtcEngineConfig();
-            config.mContext = ScreenShareForSingleUid.this;
-            config.mAppId = BuildConfig.AGORA_APP_ID;
-            config.mChannelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
-
-//            RtcEngineConfig.LogConfig logConfig = new RtcEngineConfig.LogConfig();
-//            logConfig.fileSizeInKB = logSize;
-//            config.mLogConfig = logConfig;
-//            Log.d(TAG, "logSize is : " + logSize);
-
-            config.mEventHandler = iRtcEngineEventHandler;
-            config.mAudioScenario = Constants.AudioScenario.getValue(Constants.AudioScenario.DEFAULT);
-            config.mAreaCode = ((ScreenShareApp) getApplication()).getGlobalSettings().getAreaCode();
-            engine = (RtcEngineEx) RtcEngine.create(config);
-            engine.setLocalAccessPoint(((ScreenShareApp) getApplication()).getGlobalSettings().getPrivateCloudConfig());
-        } catch (Exception e) {
-            e.printStackTrace();
+        engine = (RtcEngineEx) RtcEngineManager.getInstance().getRtcEngine();
+        if (null == engine) {
+            Log.d(TAG, "engine is null!");
             finish();
         }
+        RtcEngineManager.getInstance().setEventHandler(this);
     }
 
     /**
@@ -341,116 +327,6 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
 
     }
 
-    private final IRtcEngineEventHandler iRtcEngineEventHandler = new IRtcEngineEventHandler() {
-        @Override
-        public void onError(int err) {
-            Log.e(TAG, String.format("onError code %d message %s", err, RtcEngine.getErrorDescription(err)));
-        }
-
-        @Override
-        public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
-            Log.i(TAG, String.format("onJoinChannelSuccess channel %s uid %d", channel, uid));
-            joined = true;
-            handler.post(() -> {
-                join.setEnabled(true);
-                join.setText("离开");
-            });
-        }
-
-        @Override
-        public void onLocalVideoStateChanged(Constants.VideoSourceType source, int state, int error) {
-            super.onLocalVideoStateChanged(source, state, error);
-            Log.i(TAG, "onLocalVideoStateChanged source=" + source + ", state=" + state + ", error=" + error);
-            if (source == Constants.VideoSourceType.VIDEO_SOURCE_SCREEN_PRIMARY) {
-                if (state == Constants.LOCAL_VIDEO_STREAM_STATE_ENCODING) {
-                    if (error == Constants.ERR_OK) {
-                        showLongToast("Screen sharing start successfully.");
-                    }
-                } else if (state == Constants.LOCAL_AUDIO_STREAM_STATE_FAILED) {
-                    if (error == Constants.ERR_SCREEN_CAPTURE_SYSTEM_NOT_SUPPORTED) {
-                        showLongToast("Screen sharing has been cancelled");
-                    } else {
-                        showLongToast("Screen sharing start failed for error " + error);
-                    }
-                    runOnUIThread(() -> leaveChannel());
-                }
-            }
-        }
-
-        @Override
-        public void onLocalAudioStats(LocalAudioStats stats) {
-            super.onLocalAudioStats(stats);
-            if (mCacheLogic.isAddState())
-                fl_camera.setLocalAudioStats(stats);
-        }
-
-        @Override
-        public void onRemoteAudioStats(RemoteAudioStats stats) {
-            super.onRemoteAudioStats(stats);
-            if (mCacheLogic.isAddState()) {
-                fl_screen.setRemoteAudioStats(stats);
-            }
-
-        }
-
-        @Override
-        public void onLocalVideoStats(Constants.VideoSourceType source, LocalVideoStats stats) {
-            super.onLocalVideoStats(source, stats);
-            if (mCacheLogic.isAddState())
-                fl_camera.setLocalVideoStats(stats);
-        }
-
-        @Override
-        public void onRemoteVideoStats(RemoteVideoStats stats) {
-            super.onRemoteVideoStats(stats);
-            if (mCacheLogic.isAddState()) {
-                fl_screen.setRemoteVideoStats(stats);
-            }
-        }
-
-        @Override
-        public void onVideoSizeChanged(Constants.VideoSourceType source, int uid, int width, int height, int rotation) {
-            super.onVideoSizeChanged(source, uid, width, height, rotation);
-            Log.i(TAG, "onVideoSizeChanged。。。");
-        }
-
-        @Override
-        public void onRemoteVideoStateChanged(int uid, int state, int reason, int elapsed) {
-            super.onRemoteVideoStateChanged(uid, state, reason, elapsed);
-            Log.i(TAG, "onRemoteVideoStateChanged:uid->" + uid + ", state->" + state);
-        }
-
-        @Override
-        public void onUserJoined(int uid, int elapsed) {
-            super.onUserJoined(uid, elapsed);
-            Log.i(TAG, "onUserJoined->" + uid);
-            showLongToast("user joined success : " + uid);
-            if (remoteUid > 0) {
-                return;
-            }
-            remoteUid = uid;
-            runOnUIThread(() -> {
-                SurfaceView renderView = new SurfaceView(ScreenShareForSingleUid.this);
-                engine.setupRemoteVideo(new VideoCanvas(renderView, Constants.RENDER_MODE_FIT, uid));
-                fl_screen.removeAllViews();
-                fl_screen.addView(renderView);
-            });
-        }
-
-        @Override
-        public void onUserOffline(int uid, int reason) {
-            Log.i(TAG, String.format("user %d offline! reason:%d", uid, reason));
-            showLongToast("user offline : " + uid + " , and reason : " + reason);
-            if (remoteUid == uid) {
-                remoteUid = -1;
-                runOnUIThread(() -> {
-                    fl_screen.removeAllViews();
-                    engine.setupRemoteVideo(new VideoCanvas(null, Constants.RENDER_MODE_FIT, uid));
-                });
-            }
-        }
-    };
-
     private void startScreenSharePreview() {
         SurfaceView surfaceView = new SurfaceView(ScreenShareForSingleUid.this);
         if (fl_camera.getChildCount() > 0) {
@@ -504,6 +380,106 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
             // 设置sdk 日志模式为debug模式并且size设置到很大，这个也是dump开关打开后才设置
             engine.setParameters("{\"rtc.log_filter\":65535}");
             engine.setParameters("{\"rtc.log_size \":1000000000}");
+        }
+    }
+
+    @Override
+    public void onError(int err) {
+        Log.e(TAG, String.format("onError code %d message %s", err, RtcEngine.getErrorDescription(err)));
+    }
+
+    @Override
+    public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+        Log.i(TAG, String.format("onJoinChannelSuccess channel %s uid %d", channel, uid));
+        joined = true;
+        handler.post(() -> {
+            join.setEnabled(true);
+            join.setText("离开");
+        });
+    }
+
+    @Override
+    public void onLocalVideoStateChanged(Constants.VideoSourceType source, int state, int error) {
+        Log.i(TAG, "onLocalVideoStateChanged source=" + source + ", state=" + state + ", error=" + error);
+        if (source == Constants.VideoSourceType.VIDEO_SOURCE_SCREEN_PRIMARY) {
+            if (state == Constants.LOCAL_VIDEO_STREAM_STATE_ENCODING) {
+                if (error == Constants.ERR_OK) {
+                    showLongToast("Screen sharing start successfully.");
+                }
+            } else if (state == Constants.LOCAL_AUDIO_STREAM_STATE_FAILED) {
+                if (error == Constants.ERR_SCREEN_CAPTURE_SYSTEM_NOT_SUPPORTED) {
+                    showLongToast("Screen sharing has been cancelled");
+                } else {
+                    showLongToast("Screen sharing start failed for error " + error);
+                }
+                runOnUIThread(() -> leaveChannel());
+            }
+        }
+    }
+
+    @Override
+    public void onLocalAudioStats(IRtcEngineEventHandler.LocalAudioStats stats) {
+        if (mCacheLogic.isAddState())
+            fl_camera.setLocalAudioStats(stats);
+    }
+
+    @Override
+    public void onRemoteAudioStats(IRtcEngineEventHandler.RemoteAudioStats stats) {
+        if (mCacheLogic.isAddState()) {
+            fl_screen.setRemoteAudioStats(stats);
+        }
+
+    }
+
+    @Override
+    public void onLocalVideoStats(Constants.VideoSourceType source, IRtcEngineEventHandler.LocalVideoStats stats) {
+        if (mCacheLogic.isAddState())
+            fl_camera.setLocalVideoStats(stats);
+    }
+
+    @Override
+    public void onRemoteVideoStats(IRtcEngineEventHandler.RemoteVideoStats stats) {
+        if (mCacheLogic.isAddState()) {
+            fl_screen.setRemoteVideoStats(stats);
+        }
+    }
+
+    @Override
+    public void onVideoSizeChanged(Constants.VideoSourceType source, int uid, int width, int height, int rotation) {
+        Log.i(TAG, "onVideoSizeChanged。。。");
+    }
+
+    @Override
+    public void onRemoteVideoStateChanged(int uid, int state, int reason, int elapsed) {
+        Log.i(TAG, "onRemoteVideoStateChanged:uid->" + uid + ", state->" + state);
+    }
+
+    @Override
+    public void onUserJoined(int uid, int elapsed) {
+        Log.i(TAG, "onUserJoined->" + uid);
+        showLongToast("user joined success : " + uid);
+        if (remoteUid > 0) {
+            return;
+        }
+        remoteUid = uid;
+        runOnUIThread(() -> {
+            SurfaceView renderView = new SurfaceView(ScreenShareForSingleUid.this);
+            engine.setupRemoteVideo(new VideoCanvas(renderView, Constants.RENDER_MODE_FIT, uid));
+            fl_screen.removeAllViews();
+            fl_screen.addView(renderView);
+        });
+    }
+
+    @Override
+    public void onUserOffline(int uid, int reason) {
+        Log.i(TAG, String.format("user %d offline! reason:%d", uid, reason));
+        showLongToast("user offline : " + uid + " , and reason : " + reason);
+        if (remoteUid == uid) {
+            remoteUid = -1;
+            runOnUIThread(() -> {
+                fl_screen.removeAllViews();
+                engine.setupRemoteVideo(new VideoCanvas(null, Constants.RENDER_MODE_FIT, uid));
+            });
         }
     }
 }

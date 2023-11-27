@@ -13,6 +13,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import io.agora.agorascreenshare.common.CommonEventHandler;
+
 public abstract class BaseActivity extends AppCompatActivity {
 
     protected Handler handler;

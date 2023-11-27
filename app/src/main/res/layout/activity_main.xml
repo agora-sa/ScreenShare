@@ -22,7 +22,7 @@
         android:id="@+id/version"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="16dp"
+        android:paddingHorizontal="18dp"
         android:text="sdk version : 4.2.3.1"
         android:textColor="#ffff0000"
         android:textStyle="bold"
@@ -30,6 +30,30 @@
         app:layout_constraintTop_toBottomOf="@+id/setting"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/score"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="18dp"
+        android:text="device score : 96"
+        android:textColor="#ffff0000"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        app:layout_constraintTop_toBottomOf="@+id/version"
+        app:layout_constraintStart_toStartOf="@+id/version"/>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/screen_capture_capability"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="18dp"
+        android:text="ss support max fps : 60"
+        android:textColor="#ffff0000"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        app:layout_constraintTop_toBottomOf="@+id/score"
+        app:layout_constraintStart_toStartOf="@+id/score"/>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/screen_share_single_uid"

@@ -37,8 +37,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import io.agora.agorascreenshare.BuildConfig;
 import io.agora.agorascreenshare.R;
 import io.agora.agorascreenshare.ScreenShareApp;
+import io.agora.agorascreenshare.common.CommonEventHandler;
 import io.agora.agorascreenshare.utils.CacheLogic;
 import io.agora.agorascreenshare.utils.CommonUtil;
+import io.agora.agorascreenshare.utils.MediaProjectFgService;
+import io.agora.agorascreenshare.utils.RtcEngineManager;
 import io.agora.agorascreenshare.utils.TokenUtils;
 import io.agora.agorascreenshare.utils.VideoReportLayout;
 import io.agora.rtc2.ChannelMediaOptions;
@@ -52,7 +55,8 @@ import io.agora.rtc2.ScreenCaptureParameters;
 import io.agora.rtc2.video.VideoCanvas;
 import io.agora.rtc2.video.VideoEncoderConfiguration;
 
-public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
+public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickListener,
+        CompoundButton.OnCheckedChangeListener, CommonEventHandler {
 
     private static final String TAG = "ScreenShareForMoreUid";
     private static final int DEFAULT_SHARE_FRAME_RATE = 15;
@@ -71,6 +75,8 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
 
     private final Map<Integer, ViewGroup> remoteViews = new ConcurrentHashMap<Integer, ViewGroup>();
     private CacheLogic mCacheLogic;
+
+    private int cameraId, screenId;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -104,24 +110,15 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
     }
 
     private void initEngine() {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            fgServiceIntent = new Intent(mContext, MediaProjectFgService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            fgServiceIntent = new Intent(ScreenShareForMoreUid.this, MediaProjectFgService.class);
         }
-        try {
-            RtcEngineConfig config = new RtcEngineConfig();
-            config.mContext = mContext.getApplicationContext();
-            config.mAppId = BuildConfig.AGORA_APP_ID;
-            config.mChannelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
-            config.mEventHandler = iRtcEngineEventHandler;
-            config.mAudioScenario = Constants.AudioScenario.getValue(Constants.AudioScenario.GAME_STREAMING);
-            config.mAreaCode = RtcEngineConfig.AreaCode.AREA_CODE_CN;
-            engine = (RtcEngineEx) RtcEngine.create(config);
-            initParameters();
-            engine.setLocalAccessPoint(((ScreenShareApp) getApplication()).getGlobalSettings().getPrivateCloudConfig());
-        } catch (Exception e) {
-            e.printStackTrace();
-            onBackPressed();
+        engine = (RtcEngineEx) RtcEngineManager.getInstance().getRtcEngine();
+        if (null == engine) {
+            Log.d(TAG, "engine is null!");
+            finish();
         }
+        RtcEngineManager.getInstance().setEventHandler(this);
     }
 
     private void initParameters() {
@@ -166,7 +163,7 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
         }
         engine = null;
         super.onDestroy();
-        handler.post(RtcEngine::destroy);
+        // handler.post(RtcEngine::destroy);
     }
 
     @Override
@@ -228,7 +225,7 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
             }
             else{
                 engine.leaveChannelEx(rtcConnection2);
-                engine.startPreview(Constants.VideoSourceType.VIDEO_SOURCE_CAMERA_PRIMARY);
+                // engine.startPreview(Constants.VideoSourceType.VIDEO_SOURCE_CAMERA_PRIMARY);
             }
         } else if (compoundButton.getId() == R.id.screenSharePreview) {
             if(b){
@@ -326,6 +323,7 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
     }
 
     private void joinChannel() {
+        initParameters();
         // engine.setParameters("{\"che.video.mobile_1080p\":true}");
         // set options
         screenShareOptions.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
@@ -339,7 +337,6 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
 
         engine.enableVideo();
         // Setup video encoding configs
-
         engine.setDefaultAudioRoutetoSpeakerphone(true);
         // engine.setScreenCaptureScenario(Constants.ScreenScenarioType.SCREEN_SCENARIO_VIDEO);
 
@@ -366,6 +363,8 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
             Log.i(TAG, String.format("onJoinChannelSuccess channel %s uid %d", channel, uid));
             showLongToast(String.format("onJoinChannelSuccess channel %s uid %d", channel, uid));
             joined = true;
+            cameraId = uid;
+            Log.d(TAG, "onUserJoined-EX-cameraId=" + cameraId);
             handler.post(() -> {
                 join.setEnabled(true);
                 join.setText("leave");
@@ -399,8 +398,11 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
         @Override
         public void onUserJoined(int uid, int elapsed) {
             super.onUserJoined(uid, elapsed);
-            Log.i(TAG, "onUserJoined->" + uid);
             showLongToast(String.format("user %d joined!", uid));
+            Log.d(TAG, "onUserJoined-EX-screenId=" + screenId);
+            if (screenId == uid) {
+                return;
+            }
             if(remoteViews.containsKey(uid)){
                 return;
             }
@@ -505,5 +507,109 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
         else{
             return fl_remote_1;
         }
+    }
+
+    @Override
+    public void onError(int err) {
+        Log.e(TAG, String.format("onError code %d message %s", err, RtcEngine.getErrorDescription(err)));
+    }
+
+    @Override
+    public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+        Log.i(TAG, String.format("onJoinChannelSuccess channel %s uid %d", channel, uid));
+        showLongToast(String.format("onJoinChannelSuccess channel %s uid %d", channel, uid));
+        joined = true;
+        screenId = uid;
+        Log.d(TAG, "onJoinChannelSuccess-EX-screenId=" + screenId);
+        handler.post(() -> {
+            join.setEnabled(true);
+            join.setText("leave");
+            camera.setEnabled(true);
+            screenShare.setEnabled(true);
+            closeMicAudio.setEnabled(true);
+            closeScreenAudio.setEnabled(true);
+        });
+    }
+
+    @Override
+    public void onLocalVideoStateChanged(Constants.VideoSourceType source, int state, int error) {
+        if (state == 1) {
+            Log.i(TAG, "local view published successfully!");
+        }
+    }
+
+    @Override
+    public void onLocalAudioStats(IRtcEngineEventHandler.LocalAudioStats stats) {
+
+    }
+
+    @Override
+    public void onRemoteAudioStats(IRtcEngineEventHandler.RemoteAudioStats stats) {
+
+    }
+
+    @Override
+    public void onLocalVideoStats(Constants.VideoSourceType source, IRtcEngineEventHandler.LocalVideoStats stats) {
+
+    }
+
+    @Override
+    public void onRemoteVideoStats(IRtcEngineEventHandler.RemoteVideoStats stats) {
+        Log.d(TAG, "onRemoteVideoStats: width:" + stats.width + " x height:" + stats.height);
+    }
+
+    @Override
+    public void onVideoSizeChanged(Constants.VideoSourceType source, int uid, int width, int height, int rotation) {
+
+    }
+
+    @Override
+    public void onRemoteVideoStateChanged(int uid, int state, int reason, int elapsed) {
+        Log.i(TAG, "onRemoteVideoStateChanged:uid->" + uid + ", state->" + state);
+    }
+
+    @Override
+    public void onUserJoined(int uid, int elapsed) {
+        Log.i(TAG, "onUserJoined->" + uid);
+        showLongToast(String.format("user %d joined!", uid));
+        if (cameraId == uid) {
+            return;
+        }
+        if(remoteViews.containsKey(uid)){
+            return;
+        }
+        else{
+            handler.post(() ->
+            {
+                /**Display remote video stream*/
+                SurfaceView surfaceView = null;
+                // Create render view by RtcEngine
+                surfaceView = new SurfaceView(mContext);
+                surfaceView.setZOrderMediaOverlay(true);
+                VideoReportLayout view = getAvailableView();
+                view.setReportUid(uid);
+                remoteViews.put(uid, view);
+                // Add to the remote container
+                view.addView(surfaceView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                // Setup remote video to render
+                engine.setupRemoteVideo(new VideoCanvas(surfaceView, Constants.RENDER_MODE_HIDDEN, uid));
+            });
+        }
+    }
+
+    @Override
+    public void onUserOffline(int uid, int reason) {
+        showLongToast(String.format("user %d offline! reason:%d", uid, reason));
+        handler.post(() -> {
+            engine.setupRemoteVideo(new VideoCanvas(null, Constants.RENDER_MODE_HIDDEN, uid));
+            if (remoteViews == null) {
+                return;
+            }
+            ViewGroup group = remoteViews.get(uid);
+            if (null != group) {
+                group.removeAllViews();
+            }
+            remoteViews.remove(uid);
+        });
     }
 }

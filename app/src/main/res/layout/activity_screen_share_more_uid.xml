@@ -59,6 +59,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:text="123456"
             android:digits="@string/channel_support_char"/>
 
         <androidx.appcompat.widget.AppCompatButton
