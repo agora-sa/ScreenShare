@@ -290,6 +290,8 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
             }
             return;
         } else if (compoundButton == screenAudio) {
+            screenCaptureParameters.captureAudio = checked;
+            engine.updateScreenCaptureParameters(screenCaptureParameters);
             options.publishScreenCaptureAudio = checked;
         } else if (compoundButton == micAudio) {
             options.publishMicrophoneTrack = checked;
