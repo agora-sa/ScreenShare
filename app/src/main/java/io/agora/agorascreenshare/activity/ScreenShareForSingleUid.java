@@ -1,11 +1,13 @@
 package io.agora.agorascreenshare.activity;
 
 import static io.agora.rtc2.video.VideoEncoderConfiguration.FRAME_RATE.FRAME_RATE_FPS_15;
+import static io.agora.rtc2.video.VideoEncoderConfiguration.FRAME_RATE.FRAME_RATE_FPS_30;
 import static io.agora.rtc2.video.VideoEncoderConfiguration.ORIENTATION_MODE.ORIENTATION_MODE_ADAPTIVE;
 import static io.agora.rtc2.video.VideoEncoderConfiguration.STANDARD_BITRATE;
 import static io.agora.rtc2.video.VideoEncoderConfiguration.VD_640x360;
 
 import android.content.Intent;
+import android.graphics.Canvas;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -78,6 +80,11 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
     // 是否已经开始了视频dump的功能，默认没有开始
     private boolean isDumped;
 
+    private Constants.videoOrientation lastRotation = Constants.videoOrientation.VIDEO_ORIENTATION_0;
+    private boolean hasRotation = false;
+    private VideoCanvas remoteVideoCanvas;
+    private int delayTimes = 2000;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -101,7 +108,7 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         engine.enableVideo();
         engine.setVideoEncoderConfiguration(new VideoEncoderConfiguration(
                 VD_640x360,
-                FRAME_RATE_FPS_15,
+                FRAME_RATE_FPS_30,
                 STANDARD_BITRATE,
                 ORIENTATION_MODE_ADAPTIVE
         ));
@@ -116,7 +123,7 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         screenCaptureParameters.captureVideo = true;
         screenCaptureParameters.videoCaptureParameters.width = mCacheLogic.getDimens()[0];
         screenCaptureParameters.videoCaptureParameters.height = (int) (mCacheLogic.getDimens()[0] * 1.0f / metrics.widthPixels * metrics.heightPixels);
-        screenCaptureParameters.videoCaptureParameters.framerate = mCacheLogic.getFps();
+        screenCaptureParameters.videoCaptureParameters.framerate = 30;
         screenCaptureParameters.captureAudio = true;
         screenCaptureParameters.audioCaptureParameters.captureSignalVolume = screenAudioVolume.getProgress();
         engine.startScreenCapture(screenCaptureParameters);
@@ -124,6 +131,8 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         if (screenPreview.isChecked()) {
             startScreenSharePreview();
         }
+
+        engine.setParameters("{\"rtc.video.screenShare_drop_frame_count\":60}");
 
         String channelName = et_channel.getText().toString();
         TokenUtils.gen(ScreenShareForSingleUid.this, channelName, 0, accessToken -> {
@@ -240,6 +249,17 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         fl_camera.removeAllViews();
         fl_screen.removeAllViews();
         remoteUid = -1;
+
+        if (remoteVideoCanvas != null) {
+            remoteUid = -1;
+            runOnUIThread(() -> {
+                fl_screen.removeAllViews();
+                engine.setupRemoteVideo(new VideoCanvas(null, Constants.RENDER_MODE_FIT, remoteUid));
+                remoteVideoCanvas = null;
+            });
+        }
+        hasRotation = false;
+        lastRotation = Constants.videoOrientation.VIDEO_ORIENTATION_0;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             stopService(fgServiceIntent);
@@ -444,6 +464,40 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         if (mCacheLogic.isAddState()) {
             fl_screen.setRemoteVideoStats(stats);
         }
+
+        if (!hasRotation) {
+            delayTimes = 0;
+            hasRotation = true;
+            Log.i(TAG, "onRemoteVideoStats, adjust rotation width: " + stats.width + " height: " + stats.height + " uid: " + stats.uid);
+        }
+        Log.i(TAG, "onRemoteVideoStats, width: " + stats.width + " height: " + stats.height + " uid: " + stats.uid);
+
+        runOnUiThread(() -> {
+            if (isFinishing()) {
+                return;
+            }
+
+            Constants.videoOrientation rotation = Constants.videoOrientation.VIDEO_ORIENTATION_0;
+
+            // width than height, horizontal screen, need to be rotated 90° or 270°.
+            if (stats.width > stats.height) {
+                rotation = Constants.videoOrientation.VIDEO_ORIENTATION_90;
+            }
+            if (lastRotation == rotation) {
+                return;
+            }
+            lastRotation = rotation;
+            Constants.videoOrientation finalRotation = rotation;
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (remoteVideoCanvas != null) {
+                        Log.d(TAG, "setRemoteRenderRotation, width: " + stats.width + " height: " + stats.height + " uid: " + stats.uid + " rotation: " + finalRotation.getValue());
+                        engine.setRemoteRenderRotation(stats.uid, finalRotation);
+                    }
+                }
+            }, delayTimes);
+        });
     }
 
     @Override
@@ -466,7 +520,8 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         remoteUid = uid;
         runOnUIThread(() -> {
             SurfaceView renderView = new SurfaceView(ScreenShareForSingleUid.this);
-            engine.setupRemoteVideo(new VideoCanvas(renderView, Constants.RENDER_MODE_FIT, uid));
+            remoteVideoCanvas = new VideoCanvas(renderView, Constants.RENDER_MODE_FIT, uid);
+            engine.setupRemoteVideo(remoteVideoCanvas);
             fl_screen.removeAllViews();
             fl_screen.addView(renderView);
         });
@@ -476,12 +531,28 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
     public void onUserOffline(int uid, int reason) {
         Log.i(TAG, String.format("user %d offline! reason:%d", uid, reason));
         showLongToast("user offline : " + uid + " , and reason : " + reason);
-        if (remoteUid == uid) {
+        if (remoteVideoCanvas != null) {
             remoteUid = -1;
             runOnUIThread(() -> {
                 fl_screen.removeAllViews();
                 engine.setupRemoteVideo(new VideoCanvas(null, Constants.RENDER_MODE_FIT, uid));
+                remoteVideoCanvas = null;
             });
         }
+        hasRotation = false;
+        lastRotation = Constants.videoOrientation.VIDEO_ORIENTATION_0;
     }
+
+    @Override
+    public void onFirstRemoteVideoFrame(int uid, int width, int height, int elapsed) {
+        Log.d(TAG, "onFirstRemoteVideoFrame, width: " + width + " height: " + height + " uid: " + uid + " elapsed: " + elapsed);
+        // updateRemoteRenderMode(uid, width, height, elapsed);
+    }
+
+    @Override
+    public void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed) {
+        Log.d(TAG, "onFirstRemoteVideoDecoded, width: " + width + " height: " + height + " uid: " + uid + " elapsed: " + elapsed);
+        // updateRemoteRenderMode(uid, width, height, elapsed);
+    }
+
 }

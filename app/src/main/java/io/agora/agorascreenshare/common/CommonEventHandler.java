@@ -26,4 +26,8 @@ public interface CommonEventHandler {
     void onUserJoined(int uid, int elapsed);
 
     void onUserOffline(int uid, int reason);
+
+    void onFirstRemoteVideoFrame(int uid, int width, int height, int elapsed);
+
+    void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed);
 }

@@ -143,5 +143,19 @@ public class RtcEngineManager {
                 mEventHandler.onUserOffline(uid, reason);
             }
         }
+
+        @Override
+        public void onFirstRemoteVideoFrame(int uid, int width, int height, int elapsed) {
+            if (null != mEventHandler) {
+                mEventHandler.onFirstRemoteVideoFrame(uid, width, height, elapsed);
+            }
+        }
+
+        @Override
+        public void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed) {
+            if (null != mEventHandler) {
+                mEventHandler.onFirstRemoteVideoDecoded(uid, width, height, elapsed);
+            }
+        }
     };
 }

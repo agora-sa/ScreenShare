@@ -612,4 +612,14 @@ public class ScreenShareForMoreUid extends BaseActivity implements View.OnClickL
             remoteViews.remove(uid);
         });
     }
+
+    @Override
+    public void onFirstRemoteVideoFrame(int uid, int width, int height, int elapsed) {
+
+    }
+
+    @Override
+    public void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed) {
+
+    }
 }
