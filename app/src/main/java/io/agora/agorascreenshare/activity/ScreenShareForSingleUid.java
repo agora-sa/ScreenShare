@@ -99,12 +99,12 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         engine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
 
         engine.enableVideo();
-        engine.setVideoEncoderConfiguration(new VideoEncoderConfiguration(
-                VD_640x360,
-                FRAME_RATE_FPS_15,
-                STANDARD_BITRATE,
-                ORIENTATION_MODE_ADAPTIVE
-        ));
+//        engine.setVideoEncoderConfiguration(new VideoEncoderConfiguration(
+//                VD_640x360,
+//                FRAME_RATE_FPS_15,
+//                STANDARD_BITRATE,
+//                ORIENTATION_MODE_ADAPTIVE
+//        ));
         engine.setDefaultAudioRoutetoSpeakerphone(true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -115,7 +115,7 @@ public class ScreenShareForSingleUid extends BaseActivity implements View.OnClic
         getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
         screenCaptureParameters.captureVideo = true;
         screenCaptureParameters.videoCaptureParameters.width = mCacheLogic.getDimens()[0];
-        screenCaptureParameters.videoCaptureParameters.height = (int) (mCacheLogic.getDimens()[0] * 1.0f / metrics.widthPixels * metrics.heightPixels);
+        screenCaptureParameters.videoCaptureParameters.height = /*(int) (mCacheLogic.getDimens()[0] * 1.0f / metrics.widthPixels * metrics.heightPixels)*/mCacheLogic.getDimens()[1];
         screenCaptureParameters.videoCaptureParameters.framerate = mCacheLogic.getFps();
         screenCaptureParameters.captureAudio = true;
         screenCaptureParameters.audioCaptureParameters.captureSignalVolume = screenAudioVolume.getProgress();
